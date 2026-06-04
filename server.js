@@ -20,7 +20,7 @@ const PORT=5000;
 //  DB
  connectDB();
 //  Middlewares
-const allowedOrigins = ["http://localhost:5173"].filter(Boolean);
+const allowedOrigins = ["https://real-estate-frontend-psi.vercel.app"].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
