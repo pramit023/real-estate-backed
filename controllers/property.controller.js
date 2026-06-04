@@ -8,6 +8,24 @@ import uploadToCloudinary from "../utils/uploadToCloudinary.js";
 
 const MAX_PROPERTY_IMAGES = 10;
 
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const parseList = (value) => {
+  if (!value) return [];
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const propertyTypeMap = {
+  flat: ["flat", "apartment"],
+  apartment: ["flat", "apartment"],
+  villa: ["villa", "house"],
+  house: ["villa", "house"],
+  commercial: ["commercial", "office"],
+};
+
 // ADD PROPERTY
 export const addProperty = async (req, res) => {
   try {
@@ -305,9 +323,75 @@ export const getAllProperties = async (
   res
 ) => {
   try {
+    const {
+      city,
+      propertyType,
+      bhk,
+      minPrice,
+      maxPrice,
+      furnishing,
+      amenities,
+      status,
+      sort = "latest",
+    } = req.query;
+
+    const query = {};
+
+    if (city?.trim()) {
+      const search = new RegExp(escapeRegex(city.trim()), "i");
+      query.$or = [
+        { city: search },
+        { area: search },
+        { pincode: search },
+        { title: search },
+      ];
+    }
+
+    const selectedTypes = parseList(propertyType);
+    if (selectedTypes.length > 0) {
+      const mappedTypes = selectedTypes.flatMap((type) => propertyTypeMap[type] || [type]);
+      query.propertyType = { $in: [...new Set(mappedTypes)] };
+    }
+
+    if (bhk) {
+      query.bhk = bhk === "5+" ? { $regex: /^([5-9]|\d{2,})\+?$/ } : String(bhk);
+    }
+
+    const priceQuery = {};
+    if (minPrice && !Number.isNaN(Number(minPrice))) {
+      priceQuery.$gte = Number(minPrice);
+    }
+    if (maxPrice && !Number.isNaN(Number(maxPrice))) {
+      priceQuery.$lte = Number(maxPrice);
+    }
+    if (Object.keys(priceQuery).length > 0) {
+      query.price = priceQuery;
+    }
+
+    const selectedFurnishing = parseList(furnishing);
+    if (selectedFurnishing.length > 0) {
+      query.furnishing = { $in: selectedFurnishing };
+    }
+
+    const selectedAmenities = parseList(amenities);
+    if (selectedAmenities.length > 0) {
+      query.amenities = { $all: selectedAmenities };
+    }
+
+    const selectedStatuses = parseList(status);
+    if (selectedStatuses.length > 0) {
+      query.status = { $in: selectedStatuses };
+    }
+
+    const sortOptions = {
+      latest: { createdAt: -1 },
+      priceLow: { price: 1 },
+      priceHigh: { price: -1 },
+      popular: { views: -1 },
+    };
 
     const properties =
-      await Property.find().populate(
+      await Property.find(query).sort(sortOptions[sort] || sortOptions.latest).populate(
         "seller",
         "name email"
       );
