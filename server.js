@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import http from 'http';
 import { Server } from 'socket.io';
 import { connectDB } from './config/db.js';
@@ -16,11 +16,15 @@ import notificationRouter from './routes/notification.routes.js';
 import sellerRouter from './routes/seller.routes.js';
 
 const app=express();
-const PORT=5000;
+const PORT=process.env.PORT || 5000;
 //  DB
  connectDB();
 //  Middlewares
-const allowedOrigins = ["http://localhost:5173","http://localhost:5000",process.env.CLIENT_URL,].filter(Boolean);
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  process.env.CLIENT_URL,
+].filter(Boolean);
 // https://real-estate-frontend-psi.vercel.app/
 
 app.use(cors({
